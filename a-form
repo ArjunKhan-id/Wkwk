@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login OTP - Email & HP + Captcha</title>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js"></script>
+
+  <!-- EmailJS -->
+  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+
+  <!-- SweetAlert2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <!-- Cloudflare Turnstile -->
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+</head>
+<body>
+  <h2>Login OTP via Email</h2>
+  <input type="email" id="email" placeholder="Masukkan email"><br><br>
+  <div class="cf-turnstile" data-sitekey="SITE_KEY_KAMU" data-callback="onCaptchaSuccessEmail" data-theme="light"></div><br>
+  <button onclick="sendEmailOTP()">Kirim OTP Email</button><br><br>
+  <input type="text" id="emailOtpInput" placeholder="Masukkan OTP Email">
+  <button onclick="verifyEmailOTP()">Verifikasi Email</button>
+
+  <hr>
+
+  <h2>Login OTP via Nomor HP</h2>
+  <input type="text" id="phoneNumber" placeholder="+6281234567890"><br>
+  <div id="recaptcha-container"></div><br>
+  <button onclick="sendPhoneOTP()">Kirim OTP HP</button><br><br>
+  <input type="text" id="phoneOtpInput" placeholder="Masukkan OTP HP">
+  <button onclick="verifyPhoneOTP()">Verifikasi HP</button>
+
+  <script>
+    // === Firebase Config ===
+   const firebaseConfig = {
+  apiKey: "AIzaSyCvKkvSc3jxVvEreS1L_ZpBykw8LxLuQp4",
+  authDomain: "wkwk-5f25b.firebaseapp.com",
+  projectId: "wkwk-5f25b",
+  storageBucket: "wkwk-5f25b.firebasestorage.app",
+  messagingSenderId: "745341961374",
+  appId: "1:745341961374:web:a147831d55c5a48bf0278f",
+  measurementId: "G-3LHDJH6Y8G"
+};
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+      size: 'normal'
+    });
+
+    let phoneConfirmationResult;
+    function sendPhoneOTP() {
+      const phoneNumber = document.getElementById('phoneNumber').value;
+      auth.signInWithPhoneNumber(phoneNumber, window.recaptchaVerifier)
+        .then(result => {
+          phoneConfirmationResult = result;
+          Swal.fire('Sukses!', 'OTP HP telah dikirim.', 'success');
+        })
+        .catch(error => {
+          console.error(error);
+          Swal.fire('Gagal!', 'Gagal mengirim OTP HP.', 'error');
+        });
+    }
+
+    function verifyPhoneOTP() {
+      const code = document.getElementById("phoneOtpInput").value;
+      phoneConfirmationResult.confirm(code)
+        .then(result => {
+          Swal.fire('Berhasil!', 'Login HP sukses: ' + result.user.phoneNumber, 'success');
+        })
+        .catch(() => {
+          Swal.fire('Gagal!', 'OTP HP salah atau kadaluarsa.', 'error');
+        });
+    }
+
+    // === EmailJS ===
+    emailjs.init("ZMLQ7jZCVJi1ssffU");
+
+    let generatedEmailOTP = "";
+    let emailCaptchaPassed = false;
+
+    function generateOTP() {
+      return Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
+    function onCaptchaSuccessEmail() {
+      emailCaptchaPassed = true;
+    }
+
+    function sendEmailOTP() {
+      if (!emailCaptchaPassed) {
+        Swal.fire('Oops!', 'Harap selesaikan captcha dulu.', 'warning');
+        return;
+      }
+
+      const email = document.getElementById("email").value;
+      generatedEmailOTP = generateOTP();
+
+      const templateParams = {
+        to_email: email,
+        otp: generatedEmailOTP
+      };
+
+      emailjs.send("service_lkb20ls", "template_tqops58", templateParams)
+        .then(() => {
+          Swal.fire('OTP Terkirim!', 'Cek email kamu ya.', 'success');
+        })
+        .catch(error => {
+          console.error(error);
+          Swal.fire('Gagal!', 'Gagal mengirim OTP email.', 'error');
+        });
+    }
+
+    function verifyEmailOTP() {
+      const input = document.getElementById("emailOtpInput").value;
+      if (input === generatedEmailOTP) {
+        Swal.fire('Login Sukses!', 'Email kamu terverifikasi.', 'success');
+      } else {
+        Swal.fire('OTP Salah!', 'Periksa kembali kode OTP-nya.', 'error');
+      }
+    }
+  </script>
+</body>
+</html>
